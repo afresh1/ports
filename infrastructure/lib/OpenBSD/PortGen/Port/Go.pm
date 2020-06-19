@@ -134,8 +134,6 @@ sub _go_mod_graph
 
 	my $mod = $self->get("$json->{Module}/\@v/$json->{Version}.mod");
 	my ($module) = $mod =~ /\bmodule\s+(.*?)\s/;
-	#my ($module) = $mod =~ /\bmodule\s+(.*)\n/;
-	#$module =~ s/\s+$//;
 	unless ( $json->{Module} eq $module ) {
 		my $msg = "Module $json->{Module} doesn't match $module";
 		warn "$msg\n";
@@ -236,25 +234,26 @@ sub fill_in_makefile
 		$self->set_pkgname($di->{Name} . "-" . $parts[0]);
 	}
 
-	my @dist = map { [ $_->{Module}, $_->{Version} ] }
+	my @dist = map { [ $_->{Module}, $_->{Version}, "zip" ] }
 	    @{ $di->{Dist} || [] };
-	my @mods = map { [ $_->{Module}, $_->{Version} ] }
+	my @mods = map { [ $_->{Module}, $_->{Version}, "mod" ] }
 	    @{ $di->{Mods} };
 
+	my @combined = do { my %seen; grep { !$seen{"$_->[0]-$_->[1]"}++ } ( @dist, @mods ) };
+
 	# Turn the deps into tab separated columns
-	foreach my $s ( \@dist, \@mods ) {
+	foreach my $s ( \@combined ) {
 		next unless @{$s}; # if there aren't any, don't try
 		my ($length) = sort { $b <=> $a } map { length $_->[0] } @$s;
 		my $n = ( 1 + int $length / 8 );
 		@{$s} = map {
 		    ( my $l = $_->[0] ) =~ s/\p{Upper}/!\L$&/g;
 		    my $tabs = "\t" x ( $n - int( length($l) / 8 ) );
-		    "$l$tabs $_->[1]"
+		    "$l$tabs $_->[1] $_->[2]"
 		 } @{$s};
 	}
 
-	$self->set_other( MODGO_MODULES  => \@dist ) if @dist;
-	$self->set_other( MODGO_MODFILES => \@mods ) if @mods;
+	$self->set_other( MODGO_DEPENDS => \@combined ) if @mods;
 }
 
 sub try_building

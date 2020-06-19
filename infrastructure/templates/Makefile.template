@@ -135,10 +135,7 @@ MASTER_SITES =		???
 # MODGO_ settings for when using lang/go module
 #
 # Get source from proxy.golang.org
-#MODGO_MODULES =	modulename version
-# These are needed for dependency resolution. We don't actually need the
-# coresponding code
-#MODGO_MODFILES =	modulename version
+#MODGO_DEPENDS =	modulename version is_mod?
 
 # Dependencies
 #BUILD_DEPENDS =	???

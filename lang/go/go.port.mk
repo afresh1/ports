@@ -63,16 +63,16 @@ ALL_TARGET ?=		${MODGO_MODNAME}
 DISTFILES =		${DISTNAME}${EXTRACT_SUFX}{${MODGO_VERSION}${EXTRACT_SUFX}}
 EXTRACT_ONLY =		${DISTNAME}${EXTRACT_SUFX}
 MASTER_SITES ?=		${MASTER_SITE_ATHENS}${MODGO_MODNAME}/@v/
-.  for _modpath _modver in ${MODGO_MODULES}
-DISTFILES +=	${MODGO_DIST_SUBDIR}/${_modpath}/@v/${_modver}.zip{${_modpath}/@v/${_modver}.zip}:${MODGO_MASTER_SITESN}
-.  endfor
-.  for _modpath _modver in ${MODGO_MODFILES}
+.  for _modpath _modver _ext in ${MODGO_DEPENDS}
+.    if "${_ext}" == "zip"
+DISTFILES +=	${MODGO_DIST_SUBDIR}/${_modpath}/@v/${_modver}.zip{${_modpath}/@v/${_modver}.zip}:${MODGO_MASTER_SITESN} \
+		${MODGO_DIST_SUBDIR}/${_modpath}/@v/${_modver}.mod{${_modpath}/@v/${_modver}.mod}:${MODGO_MASTER_SITESN}
+.    else
 DISTFILES +=	${MODGO_DIST_SUBDIR}/${_modpath}/@v/${_modver}.mod{${_modpath}/@v/${_modver}.mod}:${MODGO_MASTER_SITESN}
+.    endif
 .  endfor
 MAKE_ENV +=		GOPROXY=file://${DISTDIR}/${MODGO_DIST_SUBDIR}
 MAKE_ENV +=		GO111MODULE=on GOPATH="${MODGO_GOPATH}"
-# Workaround for https://github.com/golang/go/issues/27455
-FIX_CLEANUP_PERMISSIONS =	Yes
 .else
 # ports are not allowed to fetch from the network at build time; point
 # GOPROXY at an unreachable host so that failures are also visible to
