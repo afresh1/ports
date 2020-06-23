@@ -120,36 +120,30 @@ sub _go_mod_info
 	my $old_cwd = getcwd();
 	chdir $dir or die "Unable to chdir '$dir': $!";
 
-	my @mods;
 	my @deps;
 	{
 		# Outputs: "dep version"
 		my @raw_deps = `go list -m all`
 		    or die "Unable to spawn 'go list': $!";
 		chomp @raw_deps;
-		map {
-		    my ($m, $v) = split /\s/;
-		    if ($v) {
-			    my $s = $self->_go_mod_normalize($m, $v);
-			    push @deps, $s;
-		    }
-		} @raw_deps;
-
+		@deps = map { $self->_go_mod_normalize( @{ $_ } ) }
+		    grep { $_->[1] } map { [ split / / ] } # module space version
+		    @raw_deps;
+	}
+	
+	my @mods;
+	{
 		# Outputs: "dep@version subdep@version"
 		local $ENV{GOPATH} = "$dir/go";
 		my @all_mods = `go mod graph`
 		    or die "Unable to spawn 'go mod path': $!";
 		chomp @all_mods;
-		map { [
-		    map {
-			my ($m, $v) = split /@/;
-			if ($v) {
-				my $s = $self->_go_mod_normalize($m, $v);
-				# TODO: Y U HAVE DUPS?!
-				push @mods, $s if $v && ! grep /$s/, @deps && ! grep /$s/, @mods;
-			}
-		    } split /\s/
-		] } @all_mods;
+		my %all_deps = map { $_ => 1 } @deps;
+		push @mods, grep { !$all_deps{$_}++ }
+		    map { $self->_go_mod_normalize( @{ $_ } ) }
+		    grep { $_->[1] } map { [ split /\@/ ] } # module @ version
+		    map { split /\s+/ } @all_mods;
+
 	}
 
 	chdir $old_cwd or die "Unable to chdir '$old_cwd': $!";
@@ -160,11 +154,12 @@ sub _go_mod_info
 sub _go_mod_normalize
 {
 	my ( $self, $module, $version ) = @_;
-	my $length = length $module;
 	my $spacer = 8;
-	my $n = ( 1 + int $length / $spacer );
 
 	( my $l = $module ) =~ s/\p{Upper}/!\L$&/g;
+	
+	my $length = length $l;
+	my $n = ( 1 + int $length / $spacer );
 	my $tabs = "\t" x ( $n - int( length($l) / $spacer ) );
 	return "\t\t$l$tabs $version";
 }
